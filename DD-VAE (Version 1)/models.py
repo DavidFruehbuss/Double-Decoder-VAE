@@ -40,7 +40,6 @@ class Encoder(nn.Module):
   ):
     
     super().__init__()
-    self.model_type = model_type
 
     self.encoder = nn.Sequential(
         nn.Linear(784, 512),
@@ -61,8 +60,6 @@ class Decoder(nn.Module):
   ):
     
     super().__init__()
-
-    self.model_type = model_type
 
     self.decoder = nn.Sequential(
         nn.Linear(256, 512),
