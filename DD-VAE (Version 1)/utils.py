@@ -25,13 +25,15 @@ device = device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(device)
 
 def generate(model, x):
-    x_rec_vae, x_rec_ae, simplex, z_mean, z_log_var  = model.forward(x)
-    x_rec_vae = x_rec_vae.cpu().detach().numpy()
-    plt.figure(2)
-    x = x_rec_vae[0,0]
-    x = x.reshape(28,28)
-    plt.imshow(x)
-    return
+  x = x.reshape(1,-1)
+  x_rec_vae, x_rec_ae, simplex, z_mean, z_log_var = model.forward(x)
+  x_rec_ae = x_rec_ae.cpu().detach().numpy()
+  plt.figure(2)
+  print(x_rec_ae.shape)
+  x = x_rec_ae
+  x = x.reshape(28,28)
+  plt.imshow(x)
+  return
 
 def visualize_manifold(model, grid_size=10):
   '''
@@ -45,12 +47,12 @@ def visualize_manifold(model, grid_size=10):
 
   mesh_grid_x, mesh_grid_y = torch.meshgrid(zs, zs, indexing='ij')
   mesh_grid = torch.stack([mesh_grid_x.flatten(), mesh_grid_y.flatten()], dim=1)
-  # print(mesh_grid.shape)
+  print(mesh_grid.shape)
 
-  z_mean = mesh_grid.to(device)
-  z_log_var = torch.zeros(mesh_grid.shape).to(device) - 1e15
+  z = mesh_grid.to(device)
 
-  sampled_img = model.decoder_VAE(model, z_mean, z_log_var)
+  sampled_img = model.linear_(z)
+  sampled_img = model.decoder(sampled_img)
   sampled_img = F.softmax(sampled_img, dim=1).unsqueeze(1)
 
   sampled_img = sampled_img.reshape(-1,28,28).cpu().detach().numpy()
@@ -61,11 +63,29 @@ def visualize_manifold(model, grid_size=10):
 
   return sampled_img
 
-def sample(model, num_samples=16):
-  z_mean = torch.Tensor([[-0.5,-0.2]]*16).unsqueeze(0).to(device)
-  z_log_var = torch.Tensor([[0,0]]*16).unsqueeze(0).to(device)
-  sampled_img = model.decoder_VAE(model, z_mean, z_log_var).cpu().detach().numpy()
-  sampled_img = sampled_img.reshape(num_samples, 28, 28)
-  fig, ax = plt.subplots(4,4)
-  for i in range(num_samples):
-    ax[i//4,i%4].imshow(sampled_img[i])
+def visualize_reconstructions(model):
+  '''
+  For latent space z_dim=2 this returns a visualisation of the learned manifold
+  '''
+
+  z_1 = torch.arange(0, 10, 1)
+
+  mesh_grid_x, mesh_grid_y = torch.meshgrid(z_1, z_1, indexing='ij')
+  mesh_grid = torch.stack([mesh_grid_x.flatten(), mesh_grid_y.flatten()], dim=1)
+
+  z = mesh_grid
+
+  z = torch.nn.functional.one_hot(z, 10).reshape(z.shape[0],-1)
+  z = z.type(torch.FloatTensor).to(device)
+
+  sampled_img = model.linear_vae(z)
+  sampled_img = model.decoder_VAE(sampled_img)
+  sampled_img = F.softmax(sampled_img, dim=1).unsqueeze(1)
+
+  sampled_img = sampled_img.reshape(-1,28,28).cpu().detach().numpy()
+
+  fig, ax = plt.subplots(10,10,figsize=(20,20))
+  for i in range(10**2):
+    ax[i//10,i%10].imshow(sampled_img[i])
+
+  return sampled_img
