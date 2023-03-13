@@ -65,3 +65,36 @@ def train(model, epochs, dataloader):
       print(f'Epoch: {e} done, stochastic decoder loss: {epoch_rec_vae_loss}, deterministic decoder loss: {epoch_rec_ae_loss}, approximation loss: {epoch_cross_loss}')
 
     print('Training complete')
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument('--lr', default=1e-3, type=float,
+                        help='Learning rate to use')
+    parser.add_argument('--batch_size', default=1024, type=int,
+                        help='Minibatch size')
+    parser.add_argument('--model_type', default='DD-VAE', type=str,
+                        help='Model type to use')
+    parser.add_argument('--z_dim', default=2, type=int,
+                        help='latent dimension size')
+    parser.add_argument('--epochs', default=100, type=int,
+                        help='number of epochs to train for')
+
+    args = parser.parse_args()
+
+    config = {
+        "model_type": args.model_type,
+        "learning_rate": args.learning_rate,
+        "epochs": args.epochs,
+        "batch_size": args.batch_size,
+        "z_dim": args.z_dim,
+        }
+
+    wandb.init(project="test-project", entity="inspired-minds", name='dev', config=config)
+
+    model = DD_VAE(model_tpye=args.model_type, z_dim=args.z_dim)
+    dataloader = get_mnist('train')
+
+    train(model, args.epochs, dataloader)
