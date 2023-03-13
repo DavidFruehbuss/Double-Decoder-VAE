@@ -87,147 +87,133 @@ class DD_VAE(nn.Module):
   def __init__(
       self,
       # model type
-      model_tpye: str = 'DD-VAE', # 'DD-VAE', N-VAE
+      model_tpye: str = 'DD-VAE',
       # Encoder, Decoder
       encoder: object = Encoder,
       decoder: object = Decoder,
       # model specifications
       z_dim: int=2,
+      learning_rate = 1e-3,
       act_fn: object=nn.ReLU
   ):
 
     super().__init__()
     self.model_tpye = model_tpye
     self.binary_cross_entropy = nn.BCELoss(reduction="none")
+    self.z_dim = z_dim
 
-    if self.model_tpye == 'DD-VAE':
+    self.encoder = encoder(z_dim).to(device)
+    self.linear = nn.Linear(256, z_dim*10)
 
-      self.encoder = encoder(z_dim).to(device)
-      self.linear = nn.Linear(256, z_dim*10)
+    # stochastic decoder (generative process)
+    self.linear_vae = nn.Sequential(
+      nn.Linear(z_dim*10, 256),
+      act_fn()
+    )
+    self.decoder_VAE = decoder(z_dim).to(device)
 
-      # VAE Decoder
-      self.linear_vae = nn.Sequential(
-        nn.Linear(z_dim*10, 256),
-        act_fn()
-      )
-      self.decoder_VAE = decoder(z_dim).to(device)
+    # deterministic decoder (approximation)
+    self.linear_ae = nn.Sequential(
+      nn.Linear(z_dim*10, 256),
+      act_fn()
+    )
+    self.decoder_AE = decoder(z_dim).to(device)
+    # we start with the same weights for the two decoders
+    self.decoder_AE.decoder.load_state_dict(self.decoder_VAE.decoder.state_dict())
 
-      # AE Decoder
-      self.linear_ae = nn.Sequential(
-        nn.Linear(z_dim*10, 256),
-        act_fn()
-      )
-      self.decoder_AE = decoder(z_dim).to(device)
-      # we start with the same weights for the two decoders
-      self.decoder_AE.decoder.load_state_dict(self.decoder_VAE.decoder.state_dict())
+    # dirichlet prior
+    concentration = torch.ones(10) * 0.1
+    self.prior = torch.distributions.dirichlet.Dirichlet(concentration)
 
-    elif self.model_tpye == 'N-VAE':
+    # optimizers
+    self.optimizer_rec = optim.Adam(self.parameters(), lr=learning_rate)
+    self.optimizer_app = optim.Adam(self.parameters(), lr=learning_rate)
 
-      self.encoder = encoder(z_dim).to(device)
-      self.z_mean = torch.nn.Linear(256,z_dim)
-      self.z_log_var = torch.nn.Linear(256,z_dim)
-      self.linear_ = nn.Sequential(
-        nn.Linear(z_dim, 256),
-        act_fn()
-      )
-      self.decoder = decoder(z_dim).to(device)
+  def dirichlet_sampling(self, num_samples=10):
+    '''
+    sample from dirichlet prior to explore latent space
+    '''
+    simplex_batch = self.prior.rsample((num_samples, self.z_dim))
+    simplex_batch = simplex_batch.to(device)
 
+    with torch.no_grad():
+      # generative process (stochastic decoder)
+      sample = torch.distributions.Categorical(logits=simplex_batch).sample()
+      z_vae = torch.nn.functional.one_hot(sample, 10).reshape(sample.shape[0],-1)
+      z_vae = z_vae.type(torch.FloatTensor).to(device)
+      z_vae = self.linear_vae(z_vae)
+      x_rec_vae = self.decoder_VAE(z_vae)
+      x_rec_vae = F.sigmoid(x_rec_vae)
+
+    # approximation of generative process (determininstic decoder)
+    z_ae = simplex_batch.reshape(simplex_batch.shape[0],-1)
+    z_ae = self.linear_ae(z_ae)
+    x_rec_ae = self.decoder_AE(z_ae)
+    x_rec_ae = F.sigmoid(x_rec_ae)
+
+    return x_rec_vae, x_rec_ae
 
   def forward(self, x):
     '''
     Forward pass through the encoder and both decoders
     '''
 
-    if self.model_tpye == 'DD-VAE':
+    x = self.encoder(x)
+    simplex = self.linear(x)
+    simplex = simplex.reshape(x.shape[0], -1, 10)
+    # simplex = F.softmax(simplex.reshape(x.shape[0], -1, 10), dim=2) (careful: gradient bottleneck)
 
-      x = self.encoder(x)
-      simplex = self.linear(x)
-      simplex = simplex.reshape(x.shape[0], -1, 10)
-      # simplex = F.softmax(simplex.reshape(x.shape[0], -1, 10), dim=2)
+    # generative process (stochastic decoder)
+    sample = torch.distributions.Categorical(logits=simplex).sample()
+    z_vae = torch.nn.functional.one_hot(sample, 10).reshape(sample.shape[0],-1)
+    z_vae = z_vae.type(torch.FloatTensor).to(device)
+    z_vae = self.linear_vae(z_vae)
+    x_rec_vae = self.decoder_VAE(z_vae)
+    x_rec_vae = F.sigmoid(x_rec_vae)
 
-      sample = torch.distributions.Categorical(logits=simplex).sample()
-      z_vae = torch.nn.functional.one_hot(sample, 10).reshape(sample.shape[0],-1)
-      z_vae = z_vae.type(torch.FloatTensor).to(device)
-      z_vae = self.linear_vae(z_vae)
-      x_rec_vae = self.decoder_VAE(z_vae)
-      x_rec_vae = F.sigmoid(x_rec_vae)
-      # x_rec_vae = 0
+    # approximation of generative process (determininstic decoder)
+    z_ae = simplex.reshape(simplex.shape[0],-1)
+    z_ae = self.linear_ae(z_ae)
+    x_rec_ae = self.decoder_AE(z_ae)
+    x_rec_ae = F.sigmoid(x_rec_ae)
 
+    return x_rec_vae, x_rec_ae
 
-      z_ae = simplex.reshape(simplex.shape[0],-1)
-      z_ae = self.linear_ae(z_ae)
-      x_rec_ae = self.decoder_AE(z_ae)
-      x_rec_ae = F.sigmoid(x_rec_ae)
-      
-      simplex_prob = F.softmax(simplex.reshape(x.shape[0], -1, 10), dim=2)
-
-      return x_rec_vae, x_rec_ae, simplex_prob, None, None
-
-    elif self.model_tpye == 'N-VAE':
-
-      x = self.encoder(x)
-
-      z_mean = self.z_mean(x)
-      z_log_var = self.z_log_var(x)
-      z = self.reparameterize(z_mean, z_log_var.exp())
-      # x = torch.distributions.Normal(z_mean, torch.exp(z_log_var)).rsample()
-      z = self.linear_(z)
-
-      x_rec_vae = self.decoder(z)
-      x_rec_vae = F.sigmoid(x_rec_vae)
-
-      return x_rec_vae, None, None, z_mean, z_log_var
-
-  def reparameterize(self, z_mean, z_var):
-
-    assert not (z_var < 0).any().item(), "The reparameterization trick got a negative std as input. "
-
-    noise = torch.randn(z_mean.size()).to(device)
-    z = z_mean + noise * z_var
-    return z
-
-  def compute_loss(self, x, x_rec_vae, x_rec_ae, simplex, z_mean, z_log_var):
+  def optimize_reconstruction(self, x, x_rec_vae, x_rec_ae):
     ''' 
-    Computer 2 rec_losses and reg_loss
-    Reg_loss: KL-Divergence between encoder q_enc(z|x) and uniform prior p(z)
+    Takes output of forward as input
+    Computes rec_losses for each decoder
     '''
-    if self.model_tpye == 'DD-VAE':
 
-      rec_loss_vae = F.mse_loss(x, x_rec_vae, reduction="none")
-      # rec_loss_vae = self.binary_cross_entropy(x_rec_vae, x)
-      rec_loss_vae = rec_loss_vae.sum(dim=[1]).mean(dim=[0])
-      # rec_loss_vae = 0
-      rec_loss_ae = F.mse_loss(x, x_rec_ae, reduction="none")
-      # rec_loss_ae = self.binary_cross_entropy(x_rec_ae, x)
-      rec_loss_ae = rec_loss_ae.sum(dim=[1]).mean(dim=[0])
-      # rec_loss_ae = 0
-      # p_z = torch.distributions.OneHotCategorical(probs=torch.ones_like(simplex) / 10.0)
-      # reg_loss = torch.distributions.kl_divergence(simplex, p_z).sum(-1)
-      # p_z = torch.full((2,10),0.1).squeeze(1).to(device)
-      # reg_loss = self._KL(simplex, p_z)
-      reg_loss = 0
+    rec_loss_vae = self.binary_cross_entropy(x_rec_vae, x)
+    rec_loss_vae = rec_loss_vae.mean() # TODO: sum everything instead of mean
+    # rec_loss_vae = 0
 
-      return rec_loss_vae + rec_loss_ae + reg_loss, rec_loss_vae, reg_loss, rec_loss_ae
+    rec_loss_ae = self.binary_cross_entropy(x_rec_ae, x)
+    rec_loss_ae = rec_loss_ae.mean() # TODO: sum everything instead of mean
+    # rec_loss_ae = 0
 
-    elif self.model_tpye == 'N-VAE':
+    reconstruction_loss = rec_loss_vae + rec_loss_ae
 
-      rec_loss = F.mse_loss(x, x_rec_vae, reduction="none")
-      # rec_loss = self.binary_cross_entropy(x_rec_vae, x)
-      rec_loss = rec_loss.sum(dim=[1]).mean(dim=[0])
-      reg_loss = torch.mean(-0.5 * torch.sum(1 + z_log_var - z_mean ** 2 - z_log_var.exp(), dim = 1), dim = 0)
+    reconstruction_loss.backward()
+    self.optimizer_rec.step()
+    self.optimizer_rec.zero_grad()
 
-      return rec_loss + reg_loss, rec_loss, reg_loss, None
+    return rec_loss_vae, rec_loss_ae
 
-  def par_loss(self):
-    ''' Par_loss: Mean squared loss between q_vae(x|z) and q_ae(x|P) parameters '''
+  def optimize_approximation(self, x_rec_vae, x_rec_ae):
+    ''' 
+    Takes output of dirchlet sampling as input
+    Computer cross_decoder approximation loss and optimize 
+    deterministic decoder to approximate stochastic decoder
+    '''
 
-    return F.mse_loss(self.decoder_VAE.decoder[0].parameters(), self.decoder_AE.decoder[0].parameters())
+    x_rec_vae = x_rec_vae.detach()
+    cross_loss = self.binary_cross_entropy(x_rec_ae, x_rec_vae) # ANESI-Loss
+    cross_loss = cross_loss.mean() #TODO: Check whether to use sum or mean
 
-  def _KL(self,P,Q):
-    ''' Kl-Divergence between two distributions '''
-    eps = 1e-15
-    P = P + eps
-    Q = Q + eps
-    return torch.sum(P*torch.log(P/Q))
+    cross_loss.backward()
+    self.optimizer_app.step()
+    self.optimizer_app.zero_grad()
 
-    print('Training complete')
+    return cross_loss
