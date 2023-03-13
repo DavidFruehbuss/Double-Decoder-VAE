@@ -1,0 +1,19 @@
+name: DD-VAE
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10.6
+  - numpy=1.23.5
+  - matplotlib
+  - pip=22.2.2
+  - pytorch-cuda=11.7
+  - pytorch=1.13.0
+  - torchvision=0.14.0
+  - ipykernel=6.19.2
+  - pip:
+    - wandb==0.13.5
+    - tqdm>=4.62.3
+
