@@ -86,7 +86,6 @@ if __name__ == '__main__':
 
     config = {
         "model_type": args.model_type,
-        "learning_rate": args.learning_rate,
         "epochs": args.epochs,
         "batch_size": args.batch_size,
         "z_dim": args.z_dim,
