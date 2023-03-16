@@ -28,7 +28,7 @@ def train(model, epochs, dataloader):
     trains the model
     '''
 
-    self = self.to(device)
+    model = model.to(device)
 
     for e in range(epochs):
 
@@ -42,12 +42,12 @@ def train(model, epochs, dataloader):
         batch_images = batch_images.reshape(batch_images.shape[0], -1)
 
         # optimize reconstruction step
-        x_rec_vae, x_rec_ae  = self.forward(batch_images)
-        rec_loss_vae, rec_loss_ae = self.optimize_reconstruction(batch_images, x_rec_vae, x_rec_ae)
+        x_rec_vae, x_rec_ae  = model.forward(batch_images)
+        rec_loss_vae, rec_loss_ae = model.optimize_reconstruction(batch_images, x_rec_vae, x_rec_ae)
 
         # optimize approximation step
-        x_rec_vae, x_rec_ae  = self.dirichlet_sampling(10)
-        cross_loss = self.optimize_approximation(x_rec_vae, x_rec_ae)
+        x_rec_vae, x_rec_ae  = model.dirichlet_sampling(10)
+        cross_loss = model.optimize_approximation(x_rec_vae, x_rec_ae)
         
         epoch_rec_vae_loss += rec_loss_vae
         epoch_rec_ae_loss += rec_loss_ae
