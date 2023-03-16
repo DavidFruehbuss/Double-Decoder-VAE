@@ -186,11 +186,11 @@ class DD_VAE(nn.Module):
     '''
 
     rec_loss_vae = self.binary_cross_entropy(x_rec_vae, x)
-    rec_loss_vae = rec_loss_vae.mean() # TODO: sum everything instead of mean
+    rec_loss_vae = rec_loss_vae.sum(1).mean()
     # rec_loss_vae = 0
 
     rec_loss_ae = self.binary_cross_entropy(x_rec_ae, x)
-    rec_loss_ae = rec_loss_ae.mean() # TODO: sum everything instead of mean
+    rec_loss_ae = rec_loss_ae.sum(1).mean()
     # rec_loss_ae = 0
 
     reconstruction_loss = rec_loss_vae + rec_loss_ae
@@ -210,7 +210,7 @@ class DD_VAE(nn.Module):
 
     x_rec_vae = x_rec_vae.detach()
     cross_loss = self.binary_cross_entropy(x_rec_ae, x_rec_vae) # ANESI-Loss
-    cross_loss = cross_loss.mean() #TODO: Check whether to use sum or mean
+    cross_loss = cross_loss.sum(1).mean() #TODO: Check whether to use sum or mean
 
     cross_loss.backward()
     self.optimizer_app.step()
