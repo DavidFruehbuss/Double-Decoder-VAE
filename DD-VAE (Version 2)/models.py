@@ -169,7 +169,7 @@ class DD_VAE(nn.Module):
     x = self.encoder(x)
     simplex = self.linear(x)
     simplex = simplex.reshape(x.shape[0], -1, 10)
-    simplex_S = F.softmax(simplex.reshape(x.shape[0], -1, 10), dim=2) (careful: gradient bottleneck)
+    simplex_S = F.softmax(simplex.reshape(x.shape[0], -1, 10), dim=2) # (careful: gradient bottleneck)
 
     # generative process (stochastic decoder)
     sample = torch.distributions.Categorical(logits=simplex).sample()
