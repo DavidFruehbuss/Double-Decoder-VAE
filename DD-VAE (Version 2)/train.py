@@ -93,7 +93,7 @@ if __name__ == '__main__':
                         help='weight of KL loss')
     parser.add_argument('--ds', default=10, type=int,
                         help='number of dirichlet samples per step')
-    parser.add_argument('--epochs', default=1, type=int,
+    parser.add_argument('--df', default=1, type=int,
                         help='number of dirichlet steps per reconstruction step')
 
     args = parser.parse_args()
