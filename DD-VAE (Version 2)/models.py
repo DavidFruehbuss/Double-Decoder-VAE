@@ -93,6 +93,10 @@ class DD_VAE(nn.Module):
       decoder: object = Decoder,
       # model specifications
       z_dim: int=2,
+      w_r: int=0.1,
+      w_a: int=0.01,
+      ds: int=10,
+      df: int=1,
       learning_rate = 1e-3,
       act_fn: object=nn.ReLU
   ):
@@ -101,6 +105,10 @@ class DD_VAE(nn.Module):
     self.model_tpye = model_tpye
     self.binary_cross_entropy = nn.BCELoss(reduction="none")
     self.z_dim = z_dim
+    self.w_r = w_r
+    self.w_a = w_a
+    self.ds = ds
+    self.df = df
 
     self.encoder = encoder(z_dim).to(device)
     self.linear = nn.Linear(256, z_dim*10)
@@ -133,7 +141,7 @@ class DD_VAE(nn.Module):
     '''
     sample from dirichlet prior to explore latent space
     '''
-    simplex_batch = self.prior.rsample((num_samples, self.z_dim))
+    simplex_batch = self.prior.rsample((num_samples, self.z_dim)).detach()
     simplex_batch = simplex_batch.to(device)
 
     with torch.no_grad():
@@ -161,7 +169,7 @@ class DD_VAE(nn.Module):
     x = self.encoder(x)
     simplex = self.linear(x)
     simplex = simplex.reshape(x.shape[0], -1, 10)
-    # simplex = F.softmax(simplex.reshape(x.shape[0], -1, 10), dim=2) (careful: gradient bottleneck)
+    simplex_S = F.softmax(simplex.reshape(x.shape[0], -1, 10), dim=2) (careful: gradient bottleneck)
 
     # generative process (stochastic decoder)
     sample = torch.distributions.Categorical(logits=simplex).sample()
@@ -177,9 +185,9 @@ class DD_VAE(nn.Module):
     x_rec_ae = self.decoder_AE(z_ae)
     x_rec_ae = F.sigmoid(x_rec_ae)
 
-    return x_rec_vae, x_rec_ae
+    return x_rec_vae, x_rec_ae, simplex_S
 
-  def optimize_reconstruction(self, x, x_rec_vae, x_rec_ae):
+  def optimize_reconstruction(self, x, x_rec_vae, x_rec_ae, simplex):
     ''' 
     Takes output of forward as input
     Computes rec_losses for each decoder
@@ -193,7 +201,11 @@ class DD_VAE(nn.Module):
     rec_loss_ae = rec_loss_ae.sum(1).mean()
     # rec_loss_ae = 0
 
-    reconstruction_loss = rec_loss_vae + rec_loss_ae
+    p_z = torch.full((self.z_dim,10),0.1).squeeze(1).to(device)
+    reg_loss = self._KL(simplex, p_z)
+    # reg_loss = 0
+
+    reconstruction_loss = rec_loss_vae + self.w_a * rec_loss_ae + self.w_r * reg_loss
 
     reconstruction_loss.backward()
     self.optimizer_rec.step()
@@ -210,7 +222,7 @@ class DD_VAE(nn.Module):
 
     x_rec_vae = x_rec_vae.detach()
     cross_loss = self.binary_cross_entropy(x_rec_ae, x_rec_vae) # ANESI-Loss
-    cross_loss = cross_loss.sum(1).mean() #TODO: Check whether to use sum or mean
+    cross_loss = cross_loss.sum(1).mean()
 
     cross_loss.backward()
     self.optimizer_app.step()
