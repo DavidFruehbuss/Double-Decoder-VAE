@@ -83,7 +83,7 @@ if __name__ == '__main__':
                         help='Minibatch size')
     parser.add_argument('--model_type', default='DD-VAE', type=str,
                         help='Model type to use')
-    parser.add_argument('--z_dim', default=2, type=int,
+    parser.add_argument('--z_dim', default=10, type=int,
                         help='latent dimension size')
     parser.add_argument('--epochs', default=100, type=int,
                         help='number of epochs to train for')
