@@ -229,3 +229,10 @@ class DD_VAE(nn.Module):
     self.optimizer_app.zero_grad()
 
     return cross_loss
+  
+  def _KL(self,P,Q):
+    ''' Kl-Divergence between two distributions '''
+    eps = 1e-15
+    P = P + eps
+    Q = Q + eps
+    return torch.sum(P*torch.log(P/Q))
