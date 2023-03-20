@@ -211,7 +211,7 @@ class DD_VAE(nn.Module):
     self.optimizer_rec.step()
     self.optimizer_rec.zero_grad()
 
-    return rec_loss_vae, rec_loss_ae
+    return rec_loss_vae, rec_loss_ae, reg_loss
 
   def optimize_approximation(self, x_rec_vae, x_rec_ae):
     ''' 
