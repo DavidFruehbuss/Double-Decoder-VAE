@@ -124,7 +124,7 @@ class DD_VAE(nn.Module):
     # deterministic decoder (approximation)
     self.decoder_AE = decoder(z_dim).to(device)
    
-   if decoder_equal_weights:
+    if decoder_equal_weights:
       # we start with the same weights for the two decoders
       self.decoder_AE.decoder.load_state_dict(self.decoder_VAE.decoder.state_dict())
 
