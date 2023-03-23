@@ -45,7 +45,7 @@ def train(model, epochs, dataloader, val_loader):
 
         # optimize reconstruction step
         x_rec_vae, x_rec_ae, simplex  = model.forward(batch_images)
-        rec_loss_vae, rec_loss_ae, reg_loss = model.optimize_reconstruction(batch_images, x_rec_vae, x_rec_ae, simplex)
+        rec_loss_vae, rec_loss_ae, reg_loss = model.optimize_reconstruction(batch_images, x_rec_vae, x_rec_ae, simplex, train=True)
 
         # optimize approximation step
         for _ in range(model.df):

@@ -123,7 +123,7 @@ class DD_VAE(nn.Module):
 
     # deterministic decoder (approximation)
     self.decoder_AE = decoder(z_dim).to(device)
-    
+
     if decoder_equal_weights:
       # we start with the same weights for the two decoders
       self.decoder_AE.decoder.load_state_dict(self.decoder_VAE.decoder.state_dict())
@@ -182,7 +182,7 @@ class DD_VAE(nn.Module):
 
     return x_rec_vae, x_rec_ae, simplex_S
 
-  def optimize_reconstruction(self, x, x_rec_vae, x_rec_ae, simplex):
+  def optimize_reconstruction(self, x, x_rec_vae, x_rec_ae, simplex, train):
     ''' 
     Takes output of forward as input
     Computes rec_losses for each decoder
@@ -202,9 +202,10 @@ class DD_VAE(nn.Module):
 
     reconstruction_loss = rec_loss_vae + self.w_a * rec_loss_ae + self.w_r * reg_loss
 
-    reconstruction_loss.backward()
-    self.optimizer_rec.step()
-    self.optimizer_rec.zero_grad()
+    if train:
+      reconstruction_loss.backward()
+      self.optimizer_rec.step()
+      self.optimizer_rec.zero_grad()
 
     return rec_loss_vae, rec_loss_ae, reg_loss
 
