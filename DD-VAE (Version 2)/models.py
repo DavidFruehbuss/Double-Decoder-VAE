@@ -35,7 +35,7 @@ class Encoder(nn.Module):
 
   def __init__(
       self, 
-      z_dim: int=2,
+      z_dim: int=10,
       act_fn: object=nn.ReLU
   ):
     
@@ -55,13 +55,15 @@ class Decoder(nn.Module):
 
   def __init__(
       self,
-      z_dim: int=2,
+      z_dim: int=10,
       act_fn: object=nn.ReLU
   ):
     
     super().__init__()
 
     self.decoder = nn.Sequential(
+        nn.Linear(z_dim*10, 256),
+        act_fn(),
         nn.Linear(256, 512),
         act_fn(),
         nn.Linear(512,784),
@@ -97,6 +99,8 @@ class DD_VAE(nn.Module):
       w_a: int=0.01,
       ds: int=10,
       df: int=1,
+      decoder_equal_weights: bool=True,
+      dirichlet_concentration: float=0.1,
       learning_rate = 1e-3,
       act_fn: object=nn.ReLU
   ):
@@ -104,6 +108,7 @@ class DD_VAE(nn.Module):
     super().__init__()
     self.model_tpye = model_tpye
     self.binary_cross_entropy = nn.BCELoss(reduction="none")
+    self.kl_loss = torch.nn.KLDivLoss(reduction="none")
     self.z_dim = z_dim
     self.w_r = w_r
     self.w_a = w_a
@@ -114,30 +119,24 @@ class DD_VAE(nn.Module):
     self.linear = nn.Linear(256, z_dim*10)
 
     # stochastic decoder (generative process)
-    self.linear_vae = nn.Sequential(
-      nn.Linear(z_dim*10, 256),
-      act_fn()
-    )
     self.decoder_VAE = decoder(z_dim).to(device)
 
     # deterministic decoder (approximation)
-    self.linear_ae = nn.Sequential(
-      nn.Linear(z_dim*10, 256),
-      act_fn()
-    )
     self.decoder_AE = decoder(z_dim).to(device)
-    # we start with the same weights for the two decoders
-    self.decoder_AE.decoder.load_state_dict(self.decoder_VAE.decoder.state_dict())
+   
+   if decoder_equal_weights:
+      # we start with the same weights for the two decoders
+      self.decoder_AE.decoder.load_state_dict(self.decoder_VAE.decoder.state_dict())
 
     # dirichlet prior
-    concentration = torch.ones(10) * 0.1
+    concentration = torch.ones(10) * dirichlet_concentration
     self.prior = torch.distributions.dirichlet.Dirichlet(concentration)
 
     # optimizers
     self.optimizer_rec = optim.Adam(self.parameters(), lr=learning_rate)
     self.optimizer_app = optim.Adam(self.parameters(), lr=learning_rate)
 
-  def dirichlet_sampling(self, num_samples=10):
+  def dirichlet_sampling(self, num_samples=1000):
     '''
     sample from dirichlet prior to explore latent space
     '''
@@ -146,16 +145,14 @@ class DD_VAE(nn.Module):
 
     with torch.no_grad():
       # generative process (stochastic decoder)
-      sample = torch.distributions.Categorical(logits=simplex_batch).sample()
+      sample = torch.distributions.Categorical(probs=simplex_batch).sample()
       z_vae = torch.nn.functional.one_hot(sample, 10).reshape(sample.shape[0],-1)
       z_vae = z_vae.type(torch.FloatTensor).to(device)
-      z_vae = self.linear_vae(z_vae)
       x_rec_vae = self.decoder_VAE(z_vae)
       x_rec_vae = F.sigmoid(x_rec_vae)
 
     # approximation of generative process (determininstic decoder)
     z_ae = simplex_batch.reshape(simplex_batch.shape[0],-1)
-    z_ae = self.linear_ae(z_ae)
     x_rec_ae = self.decoder_AE(z_ae)
     x_rec_ae = F.sigmoid(x_rec_ae)
 
@@ -168,20 +165,18 @@ class DD_VAE(nn.Module):
 
     x = self.encoder(x)
     simplex = self.linear(x)
-    simplex = simplex.reshape(x.shape[0], -1, 10)
+    # simplex = simplex.reshape(x.shape[0], -1, 10) # does not work if we use prob in dirichlet
     simplex_S = F.softmax(simplex.reshape(x.shape[0], -1, 10), dim=2) # (careful: gradient bottleneck)
 
     # generative process (stochastic decoder)
-    sample = torch.distributions.Categorical(logits=simplex).sample()
+    sample = torch.distributions.Categorical(probs=simplex_S).sample()
     z_vae = torch.nn.functional.one_hot(sample, 10).reshape(sample.shape[0],-1)
     z_vae = z_vae.type(torch.FloatTensor).to(device)
-    z_vae = self.linear_vae(z_vae)
     x_rec_vae = self.decoder_VAE(z_vae)
     x_rec_vae = F.sigmoid(x_rec_vae)
 
     # approximation of generative process (determininstic decoder)
-    z_ae = simplex.reshape(simplex.shape[0],-1)
-    z_ae = self.linear_ae(z_ae)
+    z_ae = simplex_S.detach().reshape(simplex_S.shape[0],-1)
     x_rec_ae = self.decoder_AE(z_ae)
     x_rec_ae = F.sigmoid(x_rec_ae)
 
@@ -202,7 +197,7 @@ class DD_VAE(nn.Module):
     # rec_loss_ae = 0
 
     p_z = torch.full((self.z_dim,10),0.1).squeeze(1).to(device)
-    reg_loss = self._KL(simplex, p_z)
+    reg_loss = self.kl_loss(torch.log(simplex), p_z).sum()
     # reg_loss = 0
 
     reconstruction_loss = rec_loss_vae + self.w_a * rec_loss_ae + self.w_r * reg_loss
@@ -230,9 +225,3 @@ class DD_VAE(nn.Module):
 
     return cross_loss
   
-  def _KL(self,P,Q):
-    ''' Kl-Divergence between two distributions '''
-    eps = 1e-15
-    P = P + eps
-    Q = Q + eps
-    return torch.sum(P*torch.log(P/Q))

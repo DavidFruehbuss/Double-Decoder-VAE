@@ -62,12 +62,6 @@ def train(model, epochs, dataloader):
         wandb.log({"reg_loss": reg_loss})
         wandb.log({"cross_loss": cross_loss})
 
-      wandb.log({"epoch": e})
-      wandb.log({"epoch_rec_vae_loss": epoch_rec_vae_loss})
-      wandb.log({"epoch_rec_ae_loss": epoch_rec_ae_loss})
-      wandb.log({"epoch_reg_loss": epoch_reg_loss})
-      wandb.log({"epoch_cross_loss": epoch_cross_loss})
-
       print(f'Epoch: {e} done, stochastic decoder loss: {epoch_rec_vae_loss}, deterministic decoder loss: {epoch_rec_ae_loss}, approximation loss: {epoch_cross_loss}, KL loss: {epoch_reg_loss}')
 
     print('Training complete')
@@ -87,14 +81,18 @@ if __name__ == '__main__':
                         help='latent dimension size')
     parser.add_argument('--epochs', default=100, type=int,
                         help='number of epochs to train for')
-    parser.add_argument('--w_a', default=0.01, type=float,
+    parser.add_argument('--w_a', default=0.0, type=float,
                         help='weight of det reconstruction loss')
     parser.add_argument('--w_r', default=0.0, type=float,
                         help='weight of KL loss')
-    parser.add_argument('--ds', default=10, type=int,
+    parser.add_argument('--ds', default=1000, type=int,
                         help='number of dirichlet samples per step')
     parser.add_argument('--df', default=1, type=int,
                         help='number of dirichlet steps per reconstruction step')
+    parser.add_argument('--d_e_v', default=True, type=bool,
+                        help='if true decoder weights are initalized the same')
+    parser.add_argument('--d_c', default=0.1, type=float,
+                        help='dirichlet concentration for latent exploration')
 
     args = parser.parse_args()
 
@@ -107,11 +105,13 @@ if __name__ == '__main__':
         "w_a": args.w_a,
         "ds": args.ds,
         "df": args.df,
+        "d_e_v": args.d_e_v,
+        "dirichlet_concentration": args.d_c
         }
 
     wandb.init(project="test-project", entity="inspired-minds", name='dev', config=config)
 
-    model = DD_VAE(model_tpye=args.model_type, z_dim=args.z_dim, w_r=args.w_r, w_a=args.w_a, ds=args.ds, df=args.df)
+    model = DD_VAE(model_tpye=args.model_type, z_dim=args.z_dim, w_r=args.w_r, w_a=args.w_a, ds=args.ds, df=args.df, decoder_equal_weights=args.d_e_v, dirichlet_concentration=args.d_c)
     dataloader = get_mnist('train')
 
     train(model, args.epochs, dataloader)
