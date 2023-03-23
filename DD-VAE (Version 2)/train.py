@@ -1,6 +1,7 @@
 from datasets import get_mnist
 from models import DD_VAE
 from utils import *
+from eval import eval
 
 import argparse
 import torch.optim as optim
@@ -23,7 +24,7 @@ torch.backends.cudnn.benchmark = False
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(device)
 
-def train(model, epochs, dataloader):
+def train(model, epochs, dataloader, val_loader):
     '''
     trains the model
     '''
@@ -63,6 +64,9 @@ def train(model, epochs, dataloader):
         wandb.log({"cross_loss": cross_loss})
 
       print(f'Epoch: {e} done, stochastic decoder loss: {epoch_rec_vae_loss}, deterministic decoder loss: {epoch_rec_ae_loss}, approximation loss: {epoch_cross_loss}, KL loss: {epoch_reg_loss}')
+
+      # Evaluation
+      eval(model, val_loader)
 
     print('Training complete')
 
@@ -113,5 +117,6 @@ if __name__ == '__main__':
 
     model = DD_VAE(model_tpye=args.model_type, z_dim=args.z_dim, w_r=args.w_r, w_a=args.w_a, ds=args.ds, df=args.df, decoder_equal_weights=args.d_e_v, dirichlet_concentration=args.d_c)
     dataloader = get_mnist('train')
+    val_loader = get_mnist('val')
 
-    train(model, args.epochs, dataloader)
+    train(model, args.epochs, dataloader, val_loader)
