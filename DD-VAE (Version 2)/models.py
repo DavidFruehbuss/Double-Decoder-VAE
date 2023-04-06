@@ -176,7 +176,7 @@ class DD_VAE(nn.Module):
     x_rec_vae = F.sigmoid(x_rec_vae)
 
     # approximation of generative process (determininstic decoder)
-    z_ae = simplex_S.detach().reshape(simplex_S.shape[0],-1)
+    z_ae = simplex_S.reshape(simplex_S.shape[0],-1)
     x_rec_ae = self.decoder_AE(z_ae)
     x_rec_ae = F.sigmoid(x_rec_ae)
 
