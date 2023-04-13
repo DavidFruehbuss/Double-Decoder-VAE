@@ -14,7 +14,7 @@ dependencies:
   - torchvision=0.14.0
   - ipykernel=6.19.2
   - h5py
-  - PIL
+  - pillow
   - pip:
     - wandb==0.13.5
     - tqdm>=4.62.3
