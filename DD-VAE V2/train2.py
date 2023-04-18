@@ -72,24 +72,51 @@ def train(model, epochs, dataloader, val_loader):
 
 if __name__ == '__main__':
 
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument('--lr', default=1e-3, type=float,
+                        help='Learning rate to use')
+    parser.add_argument('--batch_size', default=1024, type=int,
+                        help='Minibatch size')
+    parser.add_argument('--model_type', default='DD-VAE', type=str,
+                        help='Model type to use')
+    parser.add_argument('--z_dim', default=10, type=int,
+                        help='latent dimension size')
+    parser.add_argument('--epochs', default=100, type=int,
+                        help='number of epochs to train for')
+    parser.add_argument('--w_a', default=0.0, type=float,
+                        help='weight of det reconstruction loss')
+    parser.add_argument('--w_r', default=0.0, type=float,
+                        help='weight of KL loss')
+    parser.add_argument('--ds', default=1000, type=int,
+                        help='number of dirichlet samples per step')
+    parser.add_argument('--df', default=1, type=int,
+                        help='number of dirichlet steps per reconstruction step')
+    parser.add_argument('--d_e_v', default=True, type=bool,
+                        help='if true decoder weights are initalized the same')
+    parser.add_argument('--d_c', default=0.1, type=float,
+                        help='dirichlet concentration for latent exploration')
+
+    args = parser.parse_args()
+
     config = {
-        "model_type": 'DD-VAE',
-        "epochs": 100,
-        "batch_size": 1024,
-        "z_dim": 20,
-        "w_r": 0.1,
-        "w_a": 1,
-        "ds": 1000,
-        "df": 1,
-        "d_e_v": True,
-        "dirichlet_concentration": 0.1,
+        "model_type": args.model_type,
+        "epochs": args.epochs,
+        "batch_size": args.batch_size,
+        "z_dim": args.z_dim,
+        "w_r": args.w_r,
+        "w_a": args.w_a,
+        "ds": args.ds,
+        "df": args.df,
+        "d_e_v": args.d_e_v,
+        "dirichlet_concentration": args.d_c
         }
 
     wandb.init(project="test-project", entity="inspired-minds", name='dev', config=config)
-    print('Hyperparameters: ', wandb.config)
 
-    model = DD_VAE(model_tpye=wandb.model_type, z_dim=wandb.z_dim, w_r=wandb.w_r, w_a=wandb.w_a, ds=wandb.ds, df=args.df, decoder_equal_weights=wandb.d_e_v, dirichlet_concentration=wandb.d_c)
+    model = DD_VAE(model_tpye=args.model_type, z_dim=args.z_dim, w_r=args.w_r, w_a=args.w_a, ds=args.ds, df=args.df, decoder_equal_weights=args.d_e_v, dirichlet_concentration=args.d_c)
     dataloader = get_mnist('train')
     val_loader = get_mnist('val')
 
-    train(model, wandb.epochs, dataloader, val_loader)
+    train(model, args.epochs, dataloader, val_loader)
