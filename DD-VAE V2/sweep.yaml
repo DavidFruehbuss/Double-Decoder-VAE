@@ -7,25 +7,25 @@ metric:
   goal: minimize
 parameters:
   z_dim:
-    values: [20]
+    value: 20
   epochs:
-    values: [80]
+    value: 80
   batch_size:
-    values: [1024]
+    value: 1024
   learning_rate:
-    values: [1e-3]
+    value: 1e-3
   dirichlet_concentration:
     distribution: log_uniform_values
     min: 1e-4
     max: 1
   d_s:
-    values: [1000]
+    value: 1000
   d_f:
     distribution: q_log_uniform_values
     min: 1
     max: 100
   w_a:
-    values: [1]
+    value: 1
   w_r:
     distribution: log_uniform_values
     min: 1e-3
