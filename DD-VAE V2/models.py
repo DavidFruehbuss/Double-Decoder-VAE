@@ -133,7 +133,11 @@ class DD_VAE(nn.Module):
     self.prior = torch.distributions.dirichlet.Dirichlet(concentration)
 
     # optimizers
-    self.optimizer_rec = optim.Adam(self.parameters(), lr=learning_rate)
+    def concat_generators(*args):
+      for gen in args:
+          yield from gen
+
+    self.optimizer_rec = optim.Adam(concat_generators(self.encoder.encoder.parameters(), self.linear.parameters()), lr=learning_rate)
     self.optimizer_app = optim.Adam(self.parameters(), lr=learning_rate)
 
   def dirichlet_sampling(self, num_samples=1000):
