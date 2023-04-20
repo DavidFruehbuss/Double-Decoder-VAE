@@ -82,7 +82,7 @@ if __name__ == '__main__':
         "ds": 1000,
         "df": 1,
         "d_e_v": True,
-        "dirichlet_concentration": 0.1,
+        "d_c": 0.1,
         }
 
     wandb.init(project="test-project", entity="inspired-minds", name='dev', config=config)
