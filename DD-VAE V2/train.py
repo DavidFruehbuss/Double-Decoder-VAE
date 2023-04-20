@@ -88,7 +88,7 @@ if __name__ == '__main__':
     wandb.init(project="test-project", entity="inspired-minds", name='dev', config=config)
     print('Hyperparameters: ', wandb.config)
 
-    model = DD_VAE(model_tpye=wandb.config.model_type, z_dim=wandb.config.z_dim, w_r=wandb.config.w_r, w_a=wandb.config.w_a, ds=wandb.config.ds, df=args.config.df, decoder_equal_weights=wandb.config.d_e_v, dirichlet_concentration=wandb.config.d_c)
+    model = DD_VAE(model_tpye=wandb.config.model_type, z_dim=wandb.config.z_dim, w_r=wandb.config.w_r, w_a=wandb.config.w_a, ds=wandb.config.ds, df=wandb.config.df, decoder_equal_weights=wandb.config.d_e_v, dirichlet_concentration=wandb.config.d_c)
     dataloader = get_mnist('train')
     val_loader = get_mnist('val')
 
