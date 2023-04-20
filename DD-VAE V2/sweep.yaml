@@ -3,7 +3,7 @@ project: test-project
 entity: inspired-minds
 method: random
 metric:
-  name: instant_loss
+  name: instant_loss_val
   goal: minimize
 parameters:
   z_dim:
