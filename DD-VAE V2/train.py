@@ -80,7 +80,7 @@ if __name__ == '__main__':
         "epochs": 100,
         "batch_size": 1024,
         "z_dim": 20,
-        "w_r": 0.1,
+        "w_r": 1,
         "w_a": 1,
         "ds": 1000,
         "df": 1,
