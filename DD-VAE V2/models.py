@@ -8,9 +8,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from torch.distributions import Categorical
-from torch.distributions.kl import kl_divergence
-
 # Wandb
 import wandb
 
@@ -111,6 +108,7 @@ class DD_VAE(nn.Module):
     super().__init__()
     self.model_tpye = model_tpye
     self.binary_cross_entropy = nn.BCELoss(reduction="none")
+    self.kl_loss = torch.nn.KLDivLoss(reduction="none")
     self.z_dim = z_dim
     self.w_r = w_r
     self.w_a = w_a
@@ -139,15 +137,13 @@ class DD_VAE(nn.Module):
       for gen in args:
           yield from gen
 
-    self.optimizer_rec = optim.Adam(concat_generators(self.encoder.encoder.parameters(), self.linear.parameters(), self.decoder_VAE.parameters()), lr=learning_rate)
-    self.optimizer_app = optim.Adam(self.decoder_AE.parameters(), lr=learning_rate)
+    self.optimizer_rec = optim.Adam(concat_generators(self.encoder.encoder.parameters(), self.linear.parameters()), lr=learning_rate)
+    self.optimizer_app = optim.Adam(self.parameters(), lr=learning_rate)
 
   def dirichlet_sampling(self, num_samples=1000):
     '''
     sample from dirichlet prior to explore latent space
     '''
-    self.optimizer_app.zero_grad()
-
     simplex_batch = self.prior.rsample((num_samples, self.z_dim)).detach()
     simplex_batch = simplex_batch.to(device)
 
@@ -171,15 +167,13 @@ class DD_VAE(nn.Module):
     Forward pass through the encoder and both decoders
     '''
 
-    self.optimizer_rec.zero_grad()
-
     x = self.encoder(x)
     simplex = self.linear(x)
     # simplex = simplex.reshape(x.shape[0], -1, 10) # does not work if we use prob in dirichlet
     simplex_S = F.softmax(simplex.reshape(x.shape[0], -1, 10), dim=2) # (careful: gradient bottleneck)
 
     # generative process (stochastic decoder)
-    sample = Categorical(probs=simplex_S).sample()
+    sample = torch.distributions.Categorical(probs=simplex_S).sample()
     z_vae = torch.nn.functional.one_hot(sample, 10).reshape(sample.shape[0],-1)
     z_vae = z_vae.type(torch.FloatTensor).to(device)
     x_rec_vae = self.decoder_VAE(z_vae)
@@ -200,13 +194,15 @@ class DD_VAE(nn.Module):
 
     rec_loss_vae = self.binary_cross_entropy(x_rec_vae, x)
     rec_loss_vae = rec_loss_vae.sum(1).mean()
+    # rec_loss_vae = 0
 
     rec_loss_ae = self.binary_cross_entropy(x_rec_ae, x)
     rec_loss_ae = rec_loss_ae.sum(1).mean()
+    # rec_loss_ae = 0
 
-    p_z = Categorical(probs=torch.full((self.z_dim, 10), 0.1, device=device).squeeze(1))
-    q_z = Categorical(probs=simplex)
-    reg_loss = kl_divergence(q_z, p_z).sum(-1).mean()
+    p_z = torch.full((self.z_dim,10),0.1).squeeze(1).to(device)
+    reg_loss = self.kl_loss(torch.log(simplex), p_z).sum()
+    # reg_loss = 0
 
     reconstruction_loss = rec_loss_vae + self.w_a * rec_loss_ae + self.w_r * reg_loss
 
