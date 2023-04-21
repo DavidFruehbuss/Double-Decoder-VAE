@@ -63,7 +63,10 @@ def train(model, epochs, dataloader, val_loader):
         wandb.log({"reg_loss": reg_loss})
         wandb.log({"cross_loss": cross_loss})
 
-      print(f'Epoch: {e} done, stochastic decoder loss: {epoch_rec_vae_loss}, deterministic decoder loss: {epoch_rec_ae_loss}, approximation loss: {epoch_cross_loss}, KL loss: {epoch_reg_loss}')
+      print(f'Epoch: {e} done, stochastic decoder loss: {epoch_rec_vae_loss/len(dataloader)}, '
+            f'deterministic decoder loss: {epoch_rec_ae_loss/len(dataloader)}, '
+            f'approximation loss: {epoch_cross_loss/len(dataloader)}, '
+            f'KL loss: {epoch_reg_loss/len(dataloader)}')
 
       # Evaluation
       eval(model, val_loader)
