@@ -149,7 +149,7 @@ class DD_VAE(nn.Module):
 
     with torch.no_grad():
       # generative process (stochastic decoder)
-      sample = torch.distributions.Categorical(probs=simplex_batch).sample()
+      sample = Categorical(probs=simplex_batch).sample()
       z_vae = torch.nn.functional.one_hot(sample, 10).reshape(sample.shape[0],-1)
       z_vae = z_vae.type(torch.FloatTensor).to(device)
       x_rec_vae = self.decoder_VAE(z_vae)

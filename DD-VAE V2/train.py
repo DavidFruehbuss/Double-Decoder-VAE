@@ -50,7 +50,7 @@ def train(model, epochs, dataloader, val_loader):
         # optimize approximation step
         for _ in range(model.df):
           # optimize approximation step
-          x_rec_vae, x_rec_ae  = model.dirichlet_sampling(model.ds)
+          x_rec_vae, x_rec_ae = model.dirichlet_sampling(model.ds)
           cross_loss = model.optimize_approximation(x_rec_vae, x_rec_ae)
         
         epoch_rec_vae_loss += rec_loss_vae
@@ -58,12 +58,15 @@ def train(model, epochs, dataloader, val_loader):
         epoch_reg_loss += reg_loss
         epoch_cross_loss += cross_loss
 
-        wandb.log({"instance_loss": rec_loss_vae})
-        wandb.log({"det_decoder_loss": rec_loss_ae})
-        wandb.log({"reg_loss": reg_loss})
-        wandb.log({"cross_loss": cross_loss})
+        wandb.log({"instance_loss": rec_loss_vae,
+                   "det_decoder_loss": rec_loss_ae,
+                   "reg_loss": reg_loss,
+                   "cross_loss": cross_loss})
 
-      print(f'Epoch: {e} done, stochastic decoder loss: {epoch_rec_vae_loss}, deterministic decoder loss: {epoch_rec_ae_loss}, approximation loss: {epoch_cross_loss}, KL loss: {epoch_reg_loss}')
+      print(f'Epoch: {e} done, stochastic decoder loss: {epoch_rec_vae_loss/len(dataloader)}, '
+            f'deterministic decoder loss: {epoch_rec_ae_loss/len(dataloader)}, '
+            f'approximation loss: {epoch_cross_loss/len(dataloader)}, '
+            f'KL loss: {epoch_reg_loss/len(dataloader)}')
 
       # Evaluation
       eval(model, val_loader)
@@ -77,7 +80,7 @@ if __name__ == '__main__':
         "epochs": 100,
         "batch_size": 1024,
         "z_dim": 20,
-        "w_r": 0.1,
+        "w_r": 1,
         "w_a": 1,
         "ds": 1000,
         "df": 1,
