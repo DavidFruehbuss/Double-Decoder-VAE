@@ -7,7 +7,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-torch.distributions.categorical.Categorical
 
 # Wandb
 import wandb
@@ -151,7 +150,7 @@ class DD_VAE(nn.Module):
 
     with torch.no_grad():
       # generative process (stochastic decoder)
-      sample = Categorical(probs=simplex_batch).sample()
+      sample = torch.distributions.categorical.Categorical(probs=simplex_batch).sample()
       z_vae = torch.nn.functional.one_hot(sample, 10).reshape(sample.shape[0],-1)
       z_vae = z_vae.type(torch.FloatTensor).to(device)
       x_rec_vae = self.decoder_VAE(z_vae)
