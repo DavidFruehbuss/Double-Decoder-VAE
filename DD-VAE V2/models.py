@@ -46,6 +46,7 @@ class Encoder(nn.Module):
         act_fn(),
         nn.Linear(512, 256),
         act_fn(),
+        nn.Linear(256, z_dim*10),
     )
 
   def forward(self, x):
@@ -101,7 +102,8 @@ class DD_VAE(nn.Module):
       df: int=1,
       decoder_equal_weights: bool=True,
       dirichlet_concentration: float=0.1,
-      learning_rate = 1e-3,
+      learning_rate_rec = 1e-3,
+      learning_rate_acc = 1e-3,
       act_fn: object=nn.ReLU
   ):
 
@@ -116,7 +118,6 @@ class DD_VAE(nn.Module):
     self.df = df
 
     self.encoder = encoder(z_dim).to(device)
-    self.linear = nn.Linear(256, z_dim*10)
 
     # stochastic decoder (generative process)
     self.decoder_VAE = decoder(z_dim).to(device)
@@ -137,8 +138,8 @@ class DD_VAE(nn.Module):
       for gen in args:
           yield from gen
 
-    self.optimizer_rec = optim.Adam(concat_generators(self.encoder.encoder.parameters(), self.linear.parameters()), lr=learning_rate)
-    self.optimizer_app = optim.Adam(self.parameters(), lr=learning_rate)
+    self.optimizer_rec = optim.Adam(concat_generators(self.encoder.encoder.parameters(), self.decoder_VAE.decoder.parameters()), lr=learning_rate_rec)
+    self.optimizer_app = optim.Adam(self.parameters(), lr=learning_rate_app)
 
   def dirichlet_sampling(self, num_samples=1000):
     '''
@@ -167,8 +168,7 @@ class DD_VAE(nn.Module):
     Forward pass through the encoder and both decoders
     '''
 
-    x = self.encoder(x)
-    simplex = self.linear(x)
+    simplex = self.encoder(x)
     # simplex = simplex.reshape(x.shape[0], -1, 10) # does not work if we use prob in dirichlet
     simplex_S = F.softmax(simplex.reshape(x.shape[0], -1, 10), dim=2) # (careful: gradient bottleneck)
 

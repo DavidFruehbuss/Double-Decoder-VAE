@@ -5,20 +5,21 @@ from eval import eval
 
 import argparse
 import torch.optim as optim
+import numpy as np
 
 import wandb
 
-# seed
-seed = 7
-np.random.seed(seed)
-torch.manual_seed(seed)
-if torch.cuda.is_available():
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
+# # seed
+# seed = 7
+# np.random.seed(seed)
+# torch.manual_seed(seed)
+# if torch.cuda.is_available():
+#     torch.cuda.manual_seed(seed)
+#     torch.cuda.manual_seed_all(seed)
 
-# ensure reproducibility
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
+# # ensure reproducibility
+# torch.backends.cudnn.deterministic = True
+# torch.backends.cudnn.benchmark = False
 
 # device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -61,7 +62,8 @@ def train(model, epochs, dataloader, val_loader):
         wandb.log({"instance_loss": rec_loss_vae,
                    "det_decoder_loss": rec_loss_ae,
                    "reg_loss": reg_loss,
-                   "cross_loss": cross_loss})
+                   "cross_loss": cross_loss,
+                   "epoch": e})
 
       print(f'Epoch: {e} done, stochastic decoder loss: {epoch_rec_vae_loss/len(dataloader)}, '
             f'deterministic decoder loss: {epoch_rec_ae_loss/len(dataloader)}, '

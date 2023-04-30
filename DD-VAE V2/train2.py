@@ -5,6 +5,7 @@ from eval import eval
 
 import argparse
 import torch.optim as optim
+import numpy as np
 
 import wandb
 
