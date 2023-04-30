@@ -12,7 +12,9 @@ parameters:
     value: 80
   batch_size:
     value: 1024
-  learning_rate:
+  learning_rate_rec:
+    value: 1e-3
+  learning_rate_app:
     value: 1e-3
   dirichlet_concentration:
     distribution: log_uniform_values

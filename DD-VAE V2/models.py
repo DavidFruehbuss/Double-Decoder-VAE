@@ -103,7 +103,7 @@ class DD_VAE(nn.Module):
       decoder_equal_weights: bool=True,
       dirichlet_concentration: float=0.1,
       learning_rate_rec = 1e-3,
-      learning_rate_acc = 1e-3,
+      learning_rate_app = 1e-3,
       act_fn: object=nn.ReLU
   ):
 
