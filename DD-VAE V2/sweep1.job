@@ -1,0 +1,25 @@
+#!/bin/bash
+
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=ExampleTrain
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=3
+#SBATCH --time=42:00:00
+#SBATCH --mem=32000M
+#SBATCH --output=sweep1.out
+
+module purge
+module load 2021
+module load 2021_OSSC
+module load Anaconda3/2021.05
+
+
+# Your job starts in the directory where you call sbatch
+cd "$HOME/Double-Decoder-VAE/DD-VAE V2/"
+
+# Activate environment
+source activate DD-VAE
+
+# Run code
+wandb agent inspired-minds/test-project/6b7wuhql
