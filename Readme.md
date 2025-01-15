@@ -1,5 +1,7 @@
 # DD-VAE: Double Decoder VAE
 
+![Image](Double-Decoder-VAE.png)
+
 DD-VAE 
 1. trains a Variational Autoencoder with discrete latent space 
 2. gradients for the encoder and sampling step are approximated by a second deterministic decoder
@@ -7,7 +9,7 @@ DD-VAE
 
 ## Algorithm
 
-![Algorithm](Alg DD-VAE.PNG)
+![Image](Alg-DD-VAE.png)
 
 ## Requirements
 
